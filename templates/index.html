@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Movie Review Sentiment Analyzer</title>
+    <meta name="description" content="Analyze movie review sentiment using deep learning LSTM model">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Background animated elements -->
+    <div class="bg-decoration">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <div class="container">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">🎬</div>
+            <h1>Movie Review Sentiment Analyzer</h1>
+            <p class="subtitle">Powered by Deep Learning (LSTM Model)</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="card input-card">
+            <h2>📝 Enter Your Movie Review</h2>
+            <textarea id="reviewInput" placeholder="Type your movie review here... For example: 'The visuals were stunning but the story was boring'" rows="5"></textarea>
+            <button id="analyzeBtn" onclick="analyzeSentiment()">
+                <span class="btn-icon">🧠</span>
+                <span class="btn-text">Analyze Sentiment</span>
+            </button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Analyzing your review...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="hidden">
+
+            <!-- Sentiment Result -->
+            <div class="card result-card" id="sentimentCard">
+                <h2>🎯 Sentiment Result</h2>
+                <div class="sentiment-display">
+                    <span id="sentimentEmoji" class="sentiment-emoji"></span>
+                    <span id="sentimentLabel" class="sentiment-label"></span>
+                </div>
+                <div class="confidence-bar-container">
+                    <div class="confidence-label">
+                        <span>Confidence</span>
+                        <span id="confidenceValue">0%</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceFill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Probability Breakdown -->
+            <div class="card probabilities-card">
+                <h2>📊 Probability Breakdown</h2>
+                <div class="prob-bars">
+                    <div class="prob-item">
+                        <div class="prob-header">
+                            <span>😊 Positive</span>
+                            <span id="probPositive">0%</span>
+                        </div>
+                        <div class="prob-bar">
+                            <div class="prob-fill positive-fill" id="fillPositive"></div>
+                        </div>
+                    </div>
+                    <div class="prob-item">
+                        <div class="prob-header">
+                            <span>😠 Negative</span>
+                            <span id="probNegative">0%</span>
+                        </div>
+                        <div class="prob-bar">
+                            <div class="prob-fill negative-fill" id="fillNegative"></div>
+                        </div>
+                    </div>
+                    <div class="prob-item">
+                        <div class="prob-header">
+                            <span>😐 Mixed</span>
+                            <span id="probMixed">0%</span>
+                        </div>
+                        <div class="prob-bar">
+                            <div class="prob-fill mixed-fill" id="fillMixed"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Info -->
+            <div class="card model-card">
+                <h2>📈 Model Information</h2>
+                <div class="model-stats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="modelAccuracy">--</div>
+                        <div class="stat-label">Model Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">LSTM</div>
+                        <div class="stat-label">Architecture</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Classes</div>
+                    </div>
+                </div>
+
+                <!-- Confusion Matrix -->
+                <h3>🧮 Confusion Matrix</h3>
+                <div class="matrix-container">
+                    <table id="confusionMatrix" class="matrix-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Pred Positive</th>
+                                <th>Pred Negative</th>
+                                <th>Pred Mixed</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>🎓 College Mini Project — Mixed Sentiment Movie Review Classification</p>
+            <p>Built with Python • Flask • Keras LSTM • Deep Learning</p>
+        </footer>
+    </div>
+
+    <script>
+        async function analyzeSentiment() {
+            const review = document.getElementById("reviewInput").value.trim();
+
+            if (!review) {
+                alert("Please enter a movie review first!");
+                return;
+            }
+
+            // Show loading, hide results
+            document.getElementById("loading").classList.remove("hidden");
+            document.getElementById("results").classList.add("hidden");
+            document.getElementById("analyzeBtn").disabled = true;
+
+            try {
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ review: review })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Display sentiment result
+                const sentimentText = data.sentiment;
+                document.getElementById("sentimentLabel").textContent = sentimentText;
+
+                // Set emoji and card color
+                const card = document.getElementById("sentimentCard");
+                card.className = "card result-card";
+                if (sentimentText.includes("Positive")) {
+                    document.getElementById("sentimentEmoji").textContent = "😊";
+                    card.classList.add("positive-result");
+                } else if (sentimentText.includes("Negative")) {
+                    document.getElementById("sentimentEmoji").textContent = "😠";
+                    card.classList.add("negative-result");
+                } else {
+                    document.getElementById("sentimentEmoji").textContent = "😐";
+                    card.classList.add("mixed-result");
+                }
+
+                // Confidence bar
+                document.getElementById("confidenceValue").textContent = data.confidence + "%";
+                document.getElementById("confidenceFill").style.width = data.confidence + "%";
+
+                // Probability bars
+                document.getElementById("probPositive").textContent = data.probabilities.positive + "%";
+                document.getElementById("fillPositive").style.width = data.probabilities.positive + "%";
+
+                document.getElementById("probNegative").textContent = data.probabilities.negative + "%";
+                document.getElementById("fillNegative").style.width = data.probabilities.negative + "%";
+
+                document.getElementById("probMixed").textContent = data.probabilities.mixed + "%";
+                document.getElementById("fillMixed").style.width = data.probabilities.mixed + "%";
+
+                // Model accuracy
+                document.getElementById("modelAccuracy").textContent = data.accuracy + "%";
+
+                // Confusion matrix
+                const labels = ["Positive", "Negative", "Mixed"];
+                const tbody = document.getElementById("matrixBody");
+                tbody.innerHTML = "";
+                data.confusion_matrix.forEach((row, i) => {
+                    const tr = document.createElement("tr");
+                    const th = document.createElement("th");
+                    th.textContent = "Actual " + labels[i];
+                    tr.appendChild(th);
+                    row.forEach((val) => {
+                        const td = document.createElement("td");
+                        td.textContent = val;
+                        if (val > 0) td.classList.add("matrix-highlight");
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+
+                // Show results
+                document.getElementById("results").classList.remove("hidden");
+
+            } catch (error) {
+                alert("Something went wrong. Please try again.");
+                console.error(error);
+            } finally {
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("analyzeBtn").disabled = false;
+            }
+        }
+
+        // Allow Enter key to trigger analysis
+        document.getElementById("reviewInput").addEventListener("keydown", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                analyzeSentiment();
+            }
+        });
+    </script>
+
+</body>
+</html>
